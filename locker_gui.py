@@ -8,51 +8,40 @@ import datetime
 import sys
 import subprocess
 import ctypes
-import pymysql
 import webbrowser
-import requests  # 코드 상단에 추가
+import requests
 import platform
-
-DB_CONFIG = {
-    'host': '172.30.1.41',      # MariaDB 서버 IP
-    'user': 'User',             # MariaDB 사용자명
-    'password': '8iHE4ow16u8iPoqOdO3i271OLiMuHo',     # MariaDB 비밀번호
-    'db': 'lockerdb',           # 사용할 데이터베이스 이름
-    'charset': 'utf8mb4'
-}
 
 ADMIN_PASSWORD = "020115"
 CURRENT_VERSION = "1.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
 
 def save_user_info(student_id, pw, hint, timer_min):
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    conn = pymysql.connect(**DB_CONFIG)
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO user_info (created_at, student_id, password, timer_min, hint) VALUES (%s, %s, %s, %s, %s)",
-        (now, student_id, pw, timer_min, hint)
-    )
-    conn.commit()
-    conn.close()
+    url = "http://172.30.1.41:5001/save_user"
+    data = {
+        "student_id": student_id,
+        "password": pw,
+        "hint": hint,
+        "timer_min": timer_min
+    }
+    try:
+        response = requests.post(url, json=data, timeout=5)
+        if response.ok and response.json().get("result") == "ok":
+            return True
+        else:
+            print("API 오류:", response.text)
+            return False
+    except Exception as e:
+        print("API 서버 연결 오류:", e)
+        return False
 
 def load_user_info():
-    conn = pymysql.connect(**DB_CONFIG)
-    c = conn.cursor()
-    c.execute("SELECT password, timer_min FROM user_info ORDER BY id DESC LIMIT 1")
-    row = c.fetchone()
-    conn.close()
-    if row:
-        return row[0], row[1]
+    # 서버에 user_info 조회용 API를 추가해야 함
+    # 임시로 None 반환
     return None, None
 
 def load_hint():
-    conn = pymysql.connect(**DB_CONFIG)
-    c = conn.cursor()
-    c.execute("SELECT hint FROM user_info ORDER BY id DESC LIMIT 1")
-    row = c.fetchone()
-    conn.close()
-    if row:
-        return row[0]
+    # 서버에 hint 조회용 API를 추가해야 함
+    # 임시로 빈 문자열 반환
     return ""
 
 class LockScreen(tk.Tk):
@@ -65,12 +54,11 @@ class LockScreen(tk.Tk):
         self.unlocked = False
 
         self.title("자리 예약")
-        self.attributes("-fullscreen", True)  # 화면 보호 시작 시 전체화면
+        self.attributes("-fullscreen", True)
         self.attributes("-topmost", True)
         self.configure(bg="black")
         self.protocol("WM_DELETE_WINDOW", lambda: None)
 
-        # 날짜/시간 라벨 (중앙 위)
         self.datetime_label = tk.Label(
             self,
             text="",
@@ -80,10 +68,9 @@ class LockScreen(tk.Tk):
         )
         self.datetime_label.place(relx=0.5, rely=0.18, anchor="center")
 
-        # 전원 버튼 (우측 상단)
         self.power_button = tk.Menubutton(
             self,
-            text="?",  # 전원 아이콘
+            text="?",
             font=("맑은 고딕", 24, "bold"),
             fg="white",
             bg="#222222",
@@ -97,20 +84,16 @@ class LockScreen(tk.Tk):
         self.power_button.config(menu=self.power_menu)
         self.power_button.place(relx=0.98, rely=0.02, anchor="ne")
 
-        # 타이머 라벨 (중앙)
         self.timer_label = tk.Label(self, text="", font=("맑은 고딕", 20), fg="white", bg="black")
         self.timer_label.place(relx=0.5, rely=0.38, anchor="center")
 
-        # 비밀번호 입력 칸 (중앙)
         self.pw_entry = tk.Entry(self, show="*", font=("맑은 고딕", 20), width=18, justify="center")
         self.pw_entry.place(relx=0.5, rely=0.60, anchor="center")
         self.pw_entry.focus()
 
-        # 힌트 라벨 (비밀번호 입력 칸 바로 아래)
         self.hint_label = tk.Label(self, text="", font=("맑은 고딕", 18), fg="gray", bg="black")
         self.hint_label.place(relx=0.5, rely=0.68, anchor="center")
 
-        # 도움말 버튼 (우측 하단)
         self.help_button = tk.Button(
             self,
             text="도움말",
@@ -161,7 +144,6 @@ class LockScreen(tk.Tk):
             self.unlocked = True
             self.unlock_screen("관리자 권한으로 잠금 해제!")
         else:
-            # 비밀번호 틀리면 힌트 표시
             self.hint_label.config(text=self.hint)
             messagebox.showerror("오류", "비밀번호가 틀렸습니다.")
             self.pw_entry.delete(0, tk.END)
@@ -210,12 +192,10 @@ def setup_user():
     font_entry = ("맑은 고딕", 10, "bold")
     font_btn = ("맑은 고딕", 14, "bold")
 
-    # 학번
     tk.Label(root, text="학번 :", font=font_label).place(x=40, y=30)
     entry_id = tk.Entry(root, font=font_entry, width=20)
     entry_id.place(x=220, y=30)
 
-    # 학번 입력: 숫자만 허용
     def only_numeric(event):
         value = entry_id.get()
         if not value.isdigit():
@@ -224,22 +204,18 @@ def setup_user():
 
     entry_id.bind("<KeyRelease>", only_numeric)
 
-    # 비밀번호
     tk.Label(root, text="비밀번호:", font=font_label).place(x=40, y=80)
     entry_pw = tk.Entry(root, font=font_entry, show="*", width=20)
     entry_pw.place(x=220, y=80)
 
-    # 힌트
     tk.Label(root, text="비밀번호 힌트(선택) :", font=font_label).place(x=40, y=130)
     entry_hint = tk.Entry(root, font=font_entry, width=20)
     entry_hint.place(x=220, y=130)
 
-    # 타이머
     tk.Label(root, text="타이머(분, 1~60분 사이) :", font=font_label).place(x=40, y=180)
     entry_timer = tk.Entry(root, font=font_entry, width=20)
     entry_timer.place(x=220, y=180)
 
-    # 타이머 입력: 숫자만 허용
     def only_timer_numeric(event):
         value = entry_timer.get()
         if not value.isdigit():
@@ -247,6 +223,9 @@ def setup_user():
             entry_timer.insert(0, ''.join(filter(str.isdigit, value)))
 
     entry_timer.bind("<KeyRelease>", only_timer_numeric)
+
+    # 결과 저장용 딕셔너리
+    result = {}
 
     def on_ok():
         student_id = entry_id.get().strip()
@@ -269,52 +248,36 @@ def setup_user():
 
         save_user_info(student_id, pw, hint, timer_min)
         messagebox.showinfo("설정 완료", "비밀번호와 타이머가 저장되었습니다.", parent=root)
+        # 값 저장
+        result["student_id"] = student_id
+        result["pw"] = pw
+        result["hint"] = hint
+        result["timer_min"] = timer_min
         root.destroy()
         root.quit()
 
     def on_cancel():
         root.destroy()
-        sys.exit(0)  # 프로그램 완전 종료
+        sys.exit(0)
 
-    root.protocol("WM_DELETE_WINDOW", on_cancel)  # 창 닫기(X) 버튼도 완전 종료
+    root.protocol("WM_DELETE_WINDOW", on_cancel)
     btn_ok = tk.Button(root, text="OK", font=font_btn, width=8, command=on_ok)
     btn_ok.place(x=150, y=230)
     btn_cancel = tk.Button(root, text="Cancel", font=font_btn, width=8, command=on_cancel)
     btn_cancel.place(x=270, y=230)
 
     root.mainloop()
-    return True
+    # Entry에서 읽지 말고 result에서 반환
+    return result.get("student_id"), result.get("pw"), result.get("hint"), result.get("timer_min")
 
 def check_update():
-    try:
-        conn = pymysql.connect(**DB_CONFIG)
-        c = conn.cursor()
-        c.execute("SELECT version, download_url FROM program_update ORDER BY id DESC LIMIT 1")
-        row = c.fetchone()
-        conn.close()
-        if row:
-            latest_version, download_url = row
-            if latest_version != CURRENT_VERSION:
-                # 자동 다운로드
-                save_path = os.path.join(os.path.dirname(sys.argv[0]), f"locker_gui_v{latest_version}.exe")
-                try:
-                    response = requests.get(download_url, stream=True)
-                    with open(save_path, "wb") as f:
-                        for chunk in response.iter_content(chunk_size=8192):
-                            if chunk:
-                                f.write(chunk)
-                    messagebox.showinfo("업데이트 완료", f"최신 버전({latest_version})이 자동으로 다운로드 되었습니다.\n{save_path} 파일을 실행해 주세요.")
-                except Exception as e:
-                    messagebox.showerror("다운로드 오류", str(e))
-                sys.exit(0)  # 구버전은 실행하지 않고 종료
-    except Exception as e:
-        messagebox.showerror("업데이트 확인 오류", str(e))
+    # 서버에 program_update 조회용 API를 추가해야 함
+    # 임시로 패스
+    pass
 
 def allow_mariadb_port():
-    # Windows에서만 동작
     if platform.system() == "Windows":
         try:
-            # 규칙 이름을 'locker'로 지정
             subprocess.run(
                 [
                     "netsh", "advfirewall", "firewall", "add", "rule",
@@ -326,16 +289,12 @@ def allow_mariadb_port():
                 stderr=subprocess.DEVNULL
             )
         except Exception as e:
-            # 관리자 권한이 없거나 실패해도 무시
             pass
 
 if __name__ == "__main__":
-    allow_mariadb_port()  # 프로그램 시작 시 방화벽 허용
+    allow_mariadb_port()
     check_update()
-    if not setup_user():
-        sys.exit(0)
-    user_pw, timer_min = load_user_info()
-    hint = load_hint()
+    student_id, user_pw, hint, timer_min = setup_user()
     app = LockScreen(user_pw, hint, timer_min)
     app.mainloop()
 
