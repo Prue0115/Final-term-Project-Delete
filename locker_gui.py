@@ -10,6 +10,7 @@ import subprocess
 import ctypes
 import pymysql
 import webbrowser
+import requests  # 코드 상단에 추가
 
 DB_CONFIG = {
     'host': '172.30.1.41',
@@ -20,7 +21,7 @@ DB_CONFIG = {
 }
 
 ADMIN_PASSWORD = "020115"
-CURRENT_VERSION = "1.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
+CURRENT_VERSION = "2.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
 
 def save_user_info(student_id, pw, hint, timer_min):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -201,29 +202,68 @@ class LockScreen(tk.Tk):
 def setup_user():
     root = tk.Tk()
     root.title("자리 예약")
-    root.geometry("800x400") 
+    root.geometry("530x300")
     root.resizable(False, False)
-    root.withdraw()
-    # 1. 학번 입력
-    student_id = simpledialog.askstring("자리 예약", "학번을 입력하세요:")
-    if not student_id:
+
+    font_label = ("맑은 고딕", 10, "bold")
+    font_entry = ("맑은 고딕", 10, "bold")
+    font_btn = ("맑은 고딕", 14, "bold")
+
+    # 학번
+    tk.Label(root, text="학번 :", font=font_label).place(x=40, y=30)
+    entry_id = tk.Entry(root, font=font_entry, width=20)
+    entry_id.place(x=220, y=30)
+
+    # 비밀번호
+    tk.Label(root, text="비밀번호:", font=font_label).place(x=40, y=80)
+    entry_pw = tk.Entry(root, font=font_entry, show="*", width=20)
+    entry_pw.place(x=220, y=80)
+
+    # 힌트
+    tk.Label(root, text="비밀번호 힌트(선택) :", font=font_label).place(x=40, y=130)
+    entry_hint = tk.Entry(root, font=font_entry, width=20)
+    entry_hint.place(x=220, y=130)
+
+    # 타이머
+    tk.Label(root, text="타이머(분, 1~60분 사이) :", font=font_label).place(x=40, y=180)
+    entry_timer = tk.Entry(root, font=font_entry, width=20)
+    entry_timer.place(x=220, y=180)
+
+    def on_ok():
+        student_id = entry_id.get().strip()
+        pw = entry_pw.get().strip()
+        hint = entry_hint.get().strip()
+        try:
+            timer_min = int(entry_timer.get().strip())
+        except:
+            timer_min = 0
+
+        if not student_id:
+            messagebox.showwarning("입력 오류", "학번을 입력하세요.", parent=root)
+            return
+        if not pw:
+            messagebox.showwarning("입력 오류", "비밀번호를 입력하세요.", parent=root)
+            return
+        if not (1 <= timer_min <= 60):
+            messagebox.showwarning("입력 오류", "타이머는 1~60 사이의 숫자여야 합니다.", parent=root)
+            return
+
+        save_user_info(student_id, pw, hint, timer_min)
+        messagebox.showinfo("설정 완료", "비밀번호와 타이머가 저장되었습니다.", parent=root)
         root.destroy()
-        return False
-    # 2. 비밀번호 입력
-    pw = simpledialog.askstring("자리 예약", "사용자 비밀번호를 입력하세요:", show="*")
-    if not pw:
+        root.quit()
+
+    def on_cancel():
         root.destroy()
-        return False
-    # 3. 힌트 입력
-    hint = simpledialog.askstring("자리 예약", "비밀번호 힌트를 입력하세요 (선택):")
-    # 4. 타이머 입력
-    timer_min = simpledialog.askinteger("자리 예약", "타이머(분)를 입력하세요:", minvalue=1, maxvalue=60)
-    if not timer_min:
-        root.destroy()
-        return False
-    save_user_info(student_id, pw, hint or "", timer_min)
-    messagebox.showinfo("설정 완료", "비밀번호와 타이머가 저장되었습니다.")
-    root.destroy()
+        sys.exit(0)  # 프로그램 완전 종료
+
+    root.protocol("WM_DELETE_WINDOW", on_cancel)  # 창 닫기(X) 버튼도 완전 종료
+    btn_ok = tk.Button(root, text="OK", font=font_btn, width=8, command=on_ok)
+    btn_ok.place(x=150, y=230)
+    btn_cancel = tk.Button(root, text="Cancel", font=font_btn, width=8, command=on_cancel)
+    btn_cancel.place(x=270, y=230)
+
+    root.mainloop()
     return True
 
 def check_update():
@@ -236,10 +276,18 @@ def check_update():
         if row:
             latest_version, download_url = row
             if latest_version != CURRENT_VERSION:
-                if messagebox.askyesno("업데이트 안내", f"최신 버전({latest_version})이 있습니다.\n지금 다운로드 하시겠습니까?"):
-                    webbrowser.open(download_url)
-                else:
-                    messagebox.showinfo("알림", "계속해서 현재 버전으로 실행합니다.")
+                # 자동 다운로드
+                save_path = os.path.join(os.path.dirname(sys.argv[0]), f"locker_gui_v{latest_version}.exe")
+                try:
+                    response = requests.get(download_url, stream=True)
+                    with open(save_path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                    messagebox.showinfo("업데이트 완료", f"최신 버전({latest_version})이 자동으로 다운로드 되었습니다.\n{save_path} 파일을 실행해 주세요.")
+                except Exception as e:
+                    messagebox.showerror("다운로드 오류", str(e))
+                sys.exit(0)  # 구버전은 실행하지 않고 종료
     except Exception as e:
         messagebox.showerror("업데이트 확인 오류", str(e))
 
