@@ -14,8 +14,8 @@ import requests  # 코드 상단에 추가
 
 DB_CONFIG = {
     'host': '172.30.1.41',      # MariaDB 서버 IP
-    'user': 'root',             # MariaDB 사용자명
-    'password': 'PEURUSEU',     # MariaDB 비밀번호
+    'user': 'User',             # MariaDB 사용자명
+    'password': '8iHE4ow16u8iPoqOdO3i271OLiMuHo',     # MariaDB 비밀번호
     'db': 'lockerdb',           # 사용할 데이터베이스 이름
     'charset': 'utf8mb4'
 }
