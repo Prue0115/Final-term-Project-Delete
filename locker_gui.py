@@ -11,6 +11,7 @@ import ctypes
 import pymysql
 import webbrowser
 import requests  # 코드 상단에 추가
+import platform
 
 DB_CONFIG = {
     'host': '172.30.1.41',      # MariaDB 서버 IP
@@ -214,6 +215,15 @@ def setup_user():
     entry_id = tk.Entry(root, font=font_entry, width=20)
     entry_id.place(x=220, y=30)
 
+    # 학번 입력: 숫자만 허용
+    def only_numeric(event):
+        value = entry_id.get()
+        if not value.isdigit():
+            entry_id.delete(0, tk.END)
+            entry_id.insert(0, ''.join(filter(str.isdigit, value)))
+
+    entry_id.bind("<KeyRelease>", only_numeric)
+
     # 비밀번호
     tk.Label(root, text="비밀번호:", font=font_label).place(x=40, y=80)
     entry_pw = tk.Entry(root, font=font_entry, show="*", width=20)
@@ -228,6 +238,15 @@ def setup_user():
     tk.Label(root, text="타이머(분, 1~60분 사이) :", font=font_label).place(x=40, y=180)
     entry_timer = tk.Entry(root, font=font_entry, width=20)
     entry_timer.place(x=220, y=180)
+
+    # 타이머 입력: 숫자만 허용
+    def only_timer_numeric(event):
+        value = entry_timer.get()
+        if not value.isdigit():
+            entry_timer.delete(0, tk.END)
+            entry_timer.insert(0, ''.join(filter(str.isdigit, value)))
+
+    entry_timer.bind("<KeyRelease>", only_timer_numeric)
 
     def on_ok():
         student_id = entry_id.get().strip()
@@ -291,7 +310,27 @@ def check_update():
     except Exception as e:
         messagebox.showerror("업데이트 확인 오류", str(e))
 
+def allow_mariadb_port():
+    # Windows에서만 동작
+    if platform.system() == "Windows":
+        try:
+            # 규칙 이름을 'locker'로 지정
+            subprocess.run(
+                [
+                    "netsh", "advfirewall", "firewall", "add", "rule",
+                    "name=locker", "dir=in", "action=allow",
+                    "protocol=TCP", "localport=3306"
+                ],
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
+        except Exception as e:
+            # 관리자 권한이 없거나 실패해도 무시
+            pass
+
 if __name__ == "__main__":
+    allow_mariadb_port()  # 프로그램 시작 시 방화벽 허용
     check_update()
     if not setup_user():
         sys.exit(0)
