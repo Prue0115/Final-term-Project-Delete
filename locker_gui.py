@@ -11,6 +11,7 @@ import ctypes
 import webbrowser
 import requests
 import platform
+import shutil
 
 ADMIN_PASSWORD = "020115"
 CURRENT_VERSION = "1.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
@@ -34,10 +35,19 @@ def save_user_info(student_id, pw, hint, timer_min):
         print("API 서버 연결 오류:", e)
         return False
 
-def load_user_info():
-    # 서버에 user_info 조회용 API를 추가해야 함
-    # 임시로 None 반환
-    return None, None
+def load_user_info(student_id):
+    url = "http://172.30.1.41:5001/get_user"
+    try:
+        response = requests.post(url, json={"student_id": student_id}, timeout=5)
+        if response.ok and response.json().get("result") == "ok":
+            user = response.json().get("user")
+            return user["password"], user["hint"], user["timer_min"]
+        else:
+            print("사용자 정보 조회 실패:", response.text)
+            return None, None, None
+    except Exception as e:
+        print("API 서버 연결 오류:", e)
+        return None, None, None
 
 def load_hint():
     # 서버에 hint 조회용 API를 추가해야 함
@@ -271,9 +281,35 @@ def setup_user():
     return result.get("student_id"), result.get("pw"), result.get("hint"), result.get("timer_min")
 
 def check_update():
-    # 서버에 program_update 조회용 API를 추가해야 함
-    # 임시로 패스
-    pass
+    url = "http://172.30.1.41:5001/check_update"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.ok:
+            data = response.json()
+            latest_version = data.get("latest_version")
+            download_url = data.get("download_url")
+            if latest_version and latest_version != CURRENT_VERSION:
+                if messagebox.askyesno("업데이트", f"새 버전({latest_version})이 있습니다. 지금 업데이트할까요?"):
+                    download_and_replace(download_url)
+        else:
+            print("업데이트 서버 오류:", response.text)
+    except Exception as e:
+        print("업데이트 서버 연결 오류:", e)
+
+def download_and_replace(download_url):
+    try:
+        import requests
+        exe_path = sys.argv[0]
+        tmp_path = exe_path + ".new"
+        with requests.get(download_url, stream=True) as r:
+            r.raise_for_status()
+            with open(tmp_path, "wb") as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    f.write(chunk)
+        # 윈도우에서는 실행 중인 파일을 바로 교체할 수 없으므로 안내만
+        messagebox.showinfo("업데이트 완료", "새 버전이 다운로드되었습니다.\n프로그램을 재시작해 주세요.")
+    except Exception as e:
+        messagebox.showerror("업데이트 실패", f"다운로드 오류: {e}")
 
 def allow_mariadb_port():
     if platform.system() == "Windows":
@@ -293,7 +329,7 @@ def allow_mariadb_port():
 
 if __name__ == "__main__":
     allow_mariadb_port()
-    check_update()
+    check_update()  # 자동 업데이트 확인
     student_id, user_pw, hint, timer_min = setup_user()
     app = LockScreen(user_pw, hint, timer_min)
     app.mainloop()
