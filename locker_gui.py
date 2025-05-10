@@ -13,15 +13,15 @@ import webbrowser
 import requests  # 코드 상단에 추가
 
 DB_CONFIG = {
-    'host': '172.30.1.41',
-    'user': 'root',
-    'password': 'PEURUSEU',
-    'db': 'lockerdb',
+    'host': '172.30.1.41',      # MariaDB 서버 IP
+    'user': 'root',             # MariaDB 사용자명
+    'password': 'PEURUSEU',     # MariaDB 비밀번호
+    'db': 'lockerdb',           # 사용할 데이터베이스 이름
     'charset': 'utf8mb4'
 }
 
 ADMIN_PASSWORD = "020115"
-CURRENT_VERSION = "2.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
+CURRENT_VERSION = "1.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
 
 def save_user_info(student_id, pw, hint, timer_min):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
