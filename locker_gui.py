@@ -14,7 +14,7 @@ import platform
 import shutil
 
 ADMIN_PASSWORD = "020115"
-CURRENT_VERSION = "1.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
+CURRENT_VERSION = "1.2.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
 
 def save_user_info(student_id, pw, hint, timer_min):
     url = "http://172.30.1.41:5001/save_user"
