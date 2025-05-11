@@ -289,8 +289,8 @@ def check_update():
             latest_version = data.get("latest_version")
             download_url = data.get("download_url")
             if latest_version and latest_version != CURRENT_VERSION:
-                if messagebox.askyesno("업데이트", f"새 버전({latest_version})이 있습니다. 지금 업데이트할까요?"):
-                    download_and_replace(download_url)
+                # 사용자에게 묻지 않고 바로 업데이트
+                download_and_replace(download_url)
         else:
             print("업데이트 서버 오류:", response.text)
     except Exception as e:
