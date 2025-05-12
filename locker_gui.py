@@ -14,10 +14,11 @@ import platform
 import shutil
 
 ADMIN_PASSWORD = "020115"
-CURRENT_VERSION = "1.2.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
+CURRENT_VERSION = "1.0.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
+API_SERVER = "http://172.30.1.41:8888" #테스트 실행 할 땐 내부망 : http://172.30.1.41:8888 / 배포할 땐 외부망 : http://118.44.154.168:8888
 
 def save_user_info(student_id, pw, hint, timer_min):
-    url = "http://172.30.1.41:5001/save_user"
+    url = f"{API_SERVER}/save_user"
     data = {
         "student_id": student_id,
         "password": pw,
@@ -36,7 +37,7 @@ def save_user_info(student_id, pw, hint, timer_min):
         return False
 
 def load_user_info(student_id):
-    url = "http://172.30.1.41:5001/get_user"
+    url = f"{API_SERVER}/get_user"
     try:
         response = requests.post(url, json={"student_id": student_id}, timeout=5)
         if response.ok and response.json().get("result") == "ok":
@@ -281,7 +282,7 @@ def setup_user():
     return result.get("student_id"), result.get("pw"), result.get("hint"), result.get("timer_min")
 
 def check_update():
-    url = "http://172.30.1.41:5001/check_update"
+    url = f"{API_SERVER}/check_update"
     try:
         response = requests.get(url, timeout=5)
         if response.ok:
