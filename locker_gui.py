@@ -13,9 +13,9 @@ import requests
 import platform
 import shutil
 
-ADMIN_PASSWORD = "020115"
-CURRENT_VERSION = "1.0.0"  # 이 값을 새 exe를 배포할 때마다 변경하세요
-API_SERVER = "http://118.44.154.168:8888" #테스트 실행 할 땐 내부망 : http://172.30.1.41:8888 / 배포할 땐 외부망 : http://118.44.154.168:8888
+ADMIN_PASSWORD = "########"
+CURRENT_VERSION = "1.0.0"  
+API_SERVER = "http://###.###.###.####:####"
 
 def save_user_info(student_id, pw, hint, timer_min):
     url = f"{API_SERVER}/save_user"
